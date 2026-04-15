@@ -100,3 +100,69 @@ export function escapeCSV(str) {
   }
   return str;
 }
+
+const HTML_ESCAPES = Object.freeze({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+});
+
+/**
+ * Escape a string for safe embedding in HTML.
+ *
+ * Replaces `& < > " '` with their entity forms. Accepts `unknown` so
+ * callers don't need to pre-coerce — `null`/`undefined` collapse to
+ * the empty string and anything else is `String()`-ified first. The
+ * apostrophe is escaped as `&#39;` (not `&apos;`) for maximum legacy
+ * compatibility; most HTML parsers handle the numeric form reliably.
+ *
+ * Use this EVERY time you're interpolating user-authored data into an
+ * HTML template — email bodies, server-rendered pages, OG metadata —
+ * rather than hand-rolling the replace call. One canonical
+ * implementation avoids the classic forget-to-escape-the-apostrophe
+ * bug class.
+ *
+ * @param {unknown} input - Value to escape.
+ * @returns {string} HTML-safe string.
+ *
+ * @example
+ * escapeHtml('<b>Acme</b>')         // '&lt;b&gt;Acme&lt;/b&gt;'
+ * escapeHtml(`O'Brien & Co`)        // 'O&#39;Brien &amp; Co'
+ * escapeHtml(null)                  // ''
+ */
+export function escapeHtml(input) {
+  if (input === null || input === undefined) return '';
+  return String(input).replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
+}
+
+/**
+ * Aggressive comparison normaliser.
+ *
+ * Lowercase → trim → strip every non-word / non-space character →
+ * collapse runs of whitespace into single spaces. The output is
+ * intended for equality comparison or deduplication, NOT for display
+ * or URL generation (use `slugify` for URLs).
+ *
+ * Typical use: fuzzy-matching product titles and user-entered aliases
+ * so `"Pro Bundle™ (2024)"` and `"pro bundle 2024"` collide. Running
+ * the same normaliser on both sides of the compare keeps the match
+ * engine consistent across admin UI, API, and import paths.
+ *
+ * @param {string} s - Input string.
+ * @returns {string} Normalised form.
+ *
+ * @example
+ * normalize('  Pro Bundle™  (2024) ')  // 'pro bundle 2024'
+ * normalize('Pro—Bundle')              // 'probundle'  (em-dash stripped, no space inserted)
+ * normalize('Café & Résumé')           // 'café  résumé'  (accents preserved)
+ */
+export function normalize(s) {
+  if (!s || typeof s !== 'string') return '';
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s]/g, '')
+    .replace(/\s+/g, ' ');
+}
