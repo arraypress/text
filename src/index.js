@@ -50,35 +50,6 @@ export function truncate(str, maxLength, options = {}) {
 }
 
 /**
- * Convert a string to a URL-safe slug.
- *
- * Handles Unicode by transliterating common accented characters.
- * Strips everything except letters, numbers, and hyphens.
- *
- * @param {string} str - The string to slugify.
- * @returns {string} URL-safe slug.
- *
- * @example
- * slugify('My Awesome Preset Pack!')       // 'my-awesome-preset-pack'
- * slugify('  Über Cool Synth  ')           // 'uber-cool-synth'
- * slugify('Product #1 — Best Seller!!!')   // 'product-1-best-seller'
- * slugify('Café & Résumé')                 // 'cafe-resume'
- */
-export function slugify(str) {
-  if (!str || typeof str !== 'string') return '';
-
-  return str
-    .normalize('NFD')                     // decompose accents: é → e + ́
-    .replace(/[\u0300-\u036f]/g, '')      // strip combining diacritical marks
-    .toLowerCase()
-    .replace(/_/g, '-')                    // underscores → hyphens
-    .replace(/[^a-z0-9\s-]/g, '')         // remove non-alphanumeric (except spaces/hyphens)
-    .replace(/[\s]+/g, '-')               // spaces → hyphens
-    .replace(/-+/g, '-')                  // collapse multiple hyphens
-    .replace(/^-|-$/g, '');               // trim leading/trailing hyphens
-}
-
-/**
  * Escape a string for safe use in a CSV field.
  *
  * Wraps the value in double quotes if it contains commas, quotes,

@@ -1,14 +1,14 @@
 {
   "name": "@arraypress/text",
-  "version": "1.1.0",
-  "description": "Text utilities — truncation, slugification, CSV escaping, HTML escaping, and fuzzy-match normalisation.",
+  "version": "2.0.0",
+  "description": "Text utilities — truncation, CSV escaping, HTML escaping, and fuzzy-match normalisation. (slugify moved to @arraypress/slug)",
   "type": "module",
   "main": "src/index.js",
   "types": "src/index.d.ts",
   "exports": { ".": { "import": "./src/index.js", "types": "./src/index.d.ts" } },
   "files": ["src"],
   "scripts": { "test": "node --test tests/text.test.js" },
-  "keywords": ["text", "truncate", "slug", "slugify", "csv", "escape", "html", "escape-html", "normalize", "fuzzy-match"],
+  "keywords": ["text", "truncate", "csv", "escape", "html", "escape-html", "normalize", "fuzzy-match"],
   "author": "David Sherlock",
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/arraypress/text" }
