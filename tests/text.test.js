@@ -1,6 +1,13 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { truncate, slugify, escapeCSV } from '../src/index.js';
+import {
+  truncate,
+  escapeCSV,
+  escapeHtml,
+  getInitials,
+  pluralize,
+  normalize,
+} from '../src/index.js';
 
 // ── truncate ────────────────────────────────
 
@@ -38,32 +45,43 @@ describe('truncate — middle', () => {
   });
 });
 
-// ── slugify ─────────────────────────────────
+// ── getInitials ─────────────────────────────
 
-describe('slugify', () => {
-  const cases = [
-    ['My Awesome Preset Pack!', 'my-awesome-preset-pack'],
-    ['  Über Cool Synth  ', 'uber-cool-synth'],
-    ['Product #1 — Best Seller!!!', 'product-1-best-seller'],
-    ['Café & Résumé', 'cafe-resume'],
-    ['hello world', 'hello-world'],
-    ['  leading/trailing  ', 'leadingtrailing'],
-    ['UPPERCASE STUFF', 'uppercase-stuff'],
-    ['under_score_case', 'under-score-case'],
-    ['multiple---hyphens', 'multiple-hyphens'],
-    ['   spaces   everywhere   ', 'spaces-everywhere'],
-    ['123 numeric start', '123-numeric-start'],
-    ['naïve café résumé', 'naive-cafe-resume'],
-    ['Ångström', 'angstrom'],
-  ];
+describe('getInitials', () => {
+  it('multi-word default (max 2)', () => assert.equal(getInitials('David Sherlock'), 'DS'));
+  it('three-word max 2', () => assert.equal(getInitials('Sean Tyas Darren'), 'ST'));
+  it('three-word max 3', () =>
+    assert.equal(getInitials('Sean Tyas Darren', { max: 3 }), 'STD'));
+  it('single-word fallback uses first N chars', () =>
+    assert.equal(getInitials('Dave'), 'DA'));
+  it('single-word max 3', () =>
+    assert.equal(getInitials('Dave', { max: 3 }), 'DAV'));
+  it('single-word shorter than max', () =>
+    assert.equal(getInitials('Al', { max: 3 }), 'AL'));
+  it('trims whitespace', () =>
+    assert.equal(getInitials('  spaces   trimmed  '), 'ST'));
+  it('collapses multi-space runs', () =>
+    assert.equal(getInitials('A\tB\nC', { max: 3 }), 'ABC'));
+  it('null → empty', () => assert.equal(getInitials(null), ''));
+  it('undefined → empty', () => assert.equal(getInitials(undefined), ''));
+  it('empty → empty', () => assert.equal(getInitials(''), ''));
+  it('all whitespace → empty', () => assert.equal(getInitials('   '), ''));
+  it('uppercases mixed-case names', () =>
+    assert.equal(getInitials('david sherlock'), 'DS'));
+});
 
-  for (const [input, expected] of cases) {
-    it(`"${input}" → "${expected}"`, () => assert.equal(slugify(input), expected));
-  }
+// ── pluralize ───────────────────────────────
 
-  it('null → empty', () => assert.equal(slugify(null), ''));
-  it('empty → empty', () => assert.equal(slugify(''), ''));
-  it('only special chars → empty', () => assert.equal(slugify('!!!@@@###'), ''));
+describe('pluralize', () => {
+  it('1 → singular', () => assert.equal(pluralize(1, 'item', 'items'), '1 item'));
+  it('0 → plural', () => assert.equal(pluralize(0, 'item', 'items'), '0 items'));
+  it('2 → plural', () => assert.equal(pluralize(2, 'tag', 'tags'), '2 tags'));
+  it('large number', () =>
+    assert.equal(pluralize(1234, 'post', 'posts'), '1234 posts'));
+  it('negative count uses plural (treats !==1 as plural)', () =>
+    assert.equal(pluralize(-1, 'item', 'items'), '-1 items'));
+  it('translated words pass through', () =>
+    assert.equal(pluralize(3, 'élément', 'éléments'), '3 éléments'));
 });
 
 // ── escapeCSV ───────────────────────────────

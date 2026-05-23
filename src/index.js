@@ -109,6 +109,73 @@ export function escapeHtml(input) {
 }
 
 /**
+ * Returns the uppercase initials of a name. Handles both multi-word
+ * and single-word inputs gracefully.
+ *
+ * Multi-word names take the first letter of each word, up to `max`.
+ * Single-word names use the first `max` characters of the word so
+ * the avatar tile always has something to show (`"Dave"` → `"DA"`
+ * rather than `"D"`).
+ *
+ * Typical use: monogram tiles / fallback avatars on cards, author
+ * blocks, testimonials — anything that needs a placeholder when no
+ * image is available. Paired with the `generateInitialsAvatar()`
+ * helper in `@arraypress/color-utils` to render the actual SVG.
+ *
+ * @param {string|undefined|null} name - The full name (or any noun phrase).
+ * @param {{ max?: number }} [opts] - Configuration. `max` defaults to `2`.
+ * @returns {string} Initials, uppercase. Empty string for empty input.
+ *
+ * @example
+ * getInitials('David Sherlock')               // 'DS'
+ * getInitials('Sean Tyas Darren', { max: 3 }) // 'STD'
+ * getInitials('Dave')                         // 'DA' (single-word fallback)
+ * getInitials('  spaces   trimmed ')          // 'ST'
+ * getInitials('')                             // ''
+ * getInitials(undefined)                      // ''
+ */
+export function getInitials(name, opts = {}) {
+  if (!name || typeof name !== 'string') return '';
+  const max = opts.max ?? 2;
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0].slice(0, max).toUpperCase();
+  return parts
+    .slice(0, max)
+    .map((w) => w[0] ?? '')
+    .join('')
+    .toUpperCase();
+}
+
+/**
+ * English pluralisation helper for `"{n} thing" / "{n} things"`
+ * patterns. Returns the FULL phrase (count + word) so the call
+ * site collapses to a single expression:
+ *
+ *   pluralize(1, 'post', 'posts')   // '1 post'
+ *   pluralize(12, 'post', 'posts')  // '12 posts'
+ *   pluralize(0, 'item', 'items')   // '0 items'
+ *
+ * For non-English locales pass the translated singular + plural;
+ * this helper doesn't pretend to know your language's plural
+ * rules. Languages with more than two plural forms (Russian,
+ * Polish, Arabic, …) need `Intl.PluralRules`.
+ *
+ * @param {number} n - The count.
+ * @param {string} singular - Word for n === 1.
+ * @param {string} plural - Word for anything else.
+ * @returns {string} `"<n> <word>"` — full phrase.
+ *
+ * @example
+ * pluralize(1, 'item', 'items')     // '1 item'
+ * pluralize(0, 'result', 'results') // '0 results'
+ * pluralize(7, 'tag', 'tags')       // '7 tags'
+ */
+export function pluralize(n, singular, plural) {
+  return `${n} ${n === 1 ? singular : plural}`;
+}
+
+/**
  * Aggressive comparison normaliser.
  *
  * Lowercase → trim → strip every non-word / non-space character →
