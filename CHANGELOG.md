@@ -5,6 +5,14 @@ All notable changes to `@arraypress/text` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] — Unreleased
+
+### Added
+
+- `matchesAll(name, query, { fuzzyFrom? })` — every word of a query in a name, in any order, forgiving one typo in words of four letters or more. The same rules as the PHP `SugarCommerce\Format\Search`.
+- `editDistance(a, b)` — optimal string alignment by code point: a swap of neighbours is one edit.
+- `words(text)` and `fold(text)` — the folded words a search compares.
+
 ## [2.1.0] — Unreleased
 
 ### Added

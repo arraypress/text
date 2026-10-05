@@ -79,6 +79,43 @@ English `"{n} thing" / "{n} things"` pluraliser. Returns the full phrase (count 
 
 Aggressive comparison normaliser — lowercase → trim → strip non-word/non-space → collapse whitespace. For equality and dedup checks, **not** for URLs (use `@arraypress/slug` for those).
 
+## Search
+
+Somebody searching a list of files remembers roughly what a thing is called, not how it was spelled the day it was saved: "license" for "Licence Agreement.pdf", "drive master" for "Midnight Drive - Master.wav". These four functions are that search, with the same rules as the PHP `SugarCommerce\Format\Search`, so a list filtered in the browser and one filtered on the server find the same things.
+
+```js
+import { matchesAll, editDistance, words, fold } from '@arraypress/text';
+
+matchesAll('Licence Agreement.pdf', 'license')              // true — one letter out
+matchesAll('Midnight Drive - Master.wav', 'master drive')   // true — any order
+matchesAll('Midnight Drive - Master.wav', 'midnigth')       // true — a swap is one edit
+matchesAll('Neon Rain - Master.wav', 'way')                 // false — too short to guess at
+
+editDistance('midnigth', 'midnight')   // 1 (Levenshtein says 2)
+words('Midnight Drive - Master.wav')   // ['midnight', 'drive', 'master', 'wav']
+fold('Résumé.PDF')                     // 'resume.pdf'
+```
+
+### `matchesAll(name, query, options?)`
+
+Every word of the query must be in the name, in any order: as part of it, or — for words of `fuzzyFrom` characters or more (default `4`) — within one edit of a word of the name or of that word's start, so "licens" finds "Licence" before the word is finished. An empty query matches everything.
+
+### `editDistance(a, b)`
+
+Edit distance by code point (an accented letter is one character, not two bytes), counting a swap of two neighbours as one edit — optimal string alignment. The commonest typing slip is two letters the wrong way round, and plain Levenshtein counts that as two edits, past the one a search forgives.
+
+### `words(text)` / `fold(text)`
+
+`fold` lower-cases and strips accents (NFD, combining marks dropped); `words` splits the folded text on anything that is not a letter or digit, in any script.
+
+## Testing
+
+```bash
+npm test
+```
+
+73 tests, including the search cases the PHP twin runs.
+
 ## License
 
 MIT

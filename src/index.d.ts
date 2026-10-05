@@ -50,3 +50,39 @@ export function pluralize(n: number, singular: string, plural: string): string;
  * dedup checks, NOT for URLs (use `slugify` for those).
  */
 export function normalize(s: string): string;
+
+/**
+ * Lower case and accents off, for searching. Agrees with the PHP
+ * `SugarCommerce\Format\Search` fold.
+ *
+ * @example
+ * fold('Résumé.PDF')   // 'resume.pdf'
+ */
+export function fold(text: string): string;
+
+/** The words in a name or a query, folded. Non-letters/digits separate them. */
+export function words(text: string): string[];
+
+/**
+ * Edit distance by code point, with a swap of neighbours counted as one
+ * edit (optimal string alignment).
+ *
+ * @example
+ * editDistance('midnigth', 'midnight')  // 1
+ */
+export function editDistance(a: string, b: string): number;
+
+export interface MatchesAllOptions {
+  /** Shortest query word allowed one typo. Default: 4. */
+  fuzzyFrom?: number;
+}
+
+/**
+ * Whether every word of a query is in a name, in any order: as a substring,
+ * or (for words of `fuzzyFrom`+ characters) within one edit of a word or of
+ * a word's start. An empty query matches everything.
+ *
+ * @example
+ * matchesAll('Licence Agreement.pdf', 'license')  // true
+ */
+export function matchesAll(name: string, query: string, options?: MatchesAllOptions): boolean;

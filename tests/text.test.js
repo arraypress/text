@@ -7,6 +7,10 @@ import {
   getInitials,
   pluralize,
   normalize,
+  fold,
+  words,
+  editDistance,
+  matchesAll,
 } from '../src/index.js';
 
 // ── truncate ────────────────────────────────
@@ -96,4 +100,72 @@ describe('escapeCSV', () => {
   it('null → empty', () => assert.equal(escapeCSV(null), ''));
   it('empty → empty', () => assert.equal(escapeCSV(''), ''));
   it('number as string', () => assert.equal(escapeCSV('12345'), '12345'));
+});
+
+// ── fuzzy search ────────────────────────────
+// The same cases as SugarCommerce\Format\Search's PHP tests, so the browser
+// and the server find the same things.
+
+describe('fold / words', () => {
+  it('lower case, accents off', () => assert.equal(fold('Résumé.PDF'), 'resume.pdf'));
+  it('nullish → empty', () => assert.equal(fold(null), ''));
+  it('splits on anything not a letter or digit', () =>
+    assert.deepEqual(words('Midnight Drive - Master.wav'), ['midnight', 'drive', 'master', 'wav']));
+  it('keeps other scripts', () => assert.deepEqual(words('Ünïcode—テスト 2'), ['unicode', 'テスト', '2']));
+  it('nothing to split → no words', () => assert.deepEqual(words(' - '), []));
+});
+
+describe('editDistance', () => {
+  const cases = [
+    ['same', 'rain', 'rain', 0],
+    ['swap', 'rian', 'rain', 1],
+    ['swap at the end', 'midnigth', 'midnight', 1],
+    ['substitution', 'rein', 'rain', 1],
+    ['insertion', 'rains', 'rain', 1],
+    ['deletion', 'ran', 'rain', 1],
+    ['empty', '', 'rain', 4],
+    ['no edit of a swap (OSA, not Damerau)', 'ca', 'abc', 3],
+    ['a letter, not bytes', 'résumé', 'resume', 2],
+    ['two swaps', 'abdc', 'bacd', 2],
+  ];
+
+  for (const [label, a, b, expected] of cases) {
+    it(label, () => {
+      assert.equal(editDistance(a, b), expected);
+      assert.equal(editDistance(b, a), expected);
+    });
+  }
+});
+
+describe('matchesAll', () => {
+  const library = [
+    'Midnight Drive - Instrumental.wav',
+    'Licence Agreement.pdf',
+    'Midnight Drive - Master.wav',
+    'Midnight Drive - Stems.zip',
+    'Read Me First.txt',
+    'Midnight Drive - Artwork.png',
+    'Neon Rain - Master.wav',
+    'Résumé.pdf',
+  ];
+  const find = (query) => library.filter((name) => matchesAll(name, query));
+
+  it('the other spelling', () => assert.deepEqual(find('License'), ['Licence Agreement.pdf']));
+  it('half typed', () => assert.deepEqual(find('licens'), ['Licence Agreement.pdf']));
+  it('any case', () => assert.deepEqual(find('LICENCE'), ['Licence Agreement.pdf']));
+  it('words in any order', () => assert.deepEqual(find('master drive'), ['Midnight Drive - Master.wav']));
+  it('every word must be there', () => assert.deepEqual(find('neon drive'), []));
+  it('a typo in each word', () => assert.deepEqual(find('midnigt mastr'), ['Midnight Drive - Master.wav']));
+  it('part of a word', () => assert.deepEqual(find('strum'), ['Midnight Drive - Instrumental.wav']));
+  it('the extension', () => assert.deepEqual(find('.zip'), ['Midnight Drive - Stems.zip']));
+  it('without the accents', () => assert.deepEqual(find('resume'), ['Résumé.pdf']));
+  it('no guessing when short', () => assert.deepEqual(find('way'), []));
+  it('nothing like it', () => assert.deepEqual(find('invoice'), []));
+  it('two letters swapped', () => assert.deepEqual(find('midnigth'), [
+    'Midnight Drive - Instrumental.wav', 'Midnight Drive - Master.wav', 'Midnight Drive - Stems.zip', 'Midnight Drive - Artwork.png',
+  ]));
+  it('swapped in a short word', () => assert.deepEqual(find('rian'), ['Neon Rain - Master.wav']));
+  it('swapped while typing', () => assert.deepEqual(find('licnece'), ['Licence Agreement.pdf']));
+  it('an empty query matches everything', () => assert.equal(find('').length, library.length));
+  it('fuzzyFrom is adjustable', () => assert.equal(matchesAll('Neon Rain.wav', 'rian', { fuzzyFrom: 5 }), false));
 });
