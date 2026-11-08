@@ -1,12 +1,31 @@
 /**
  * @arraypress/text
  *
- * Practical text utilities — truncation, slugification, and CSV escaping.
+ * Practical text utilities — truncation, CSV and HTML escaping, initials,
+ * plurals, first lines, and accent-blind, typo-tolerant search.
  * Designed for ecommerce admin UIs, data export, and URL generation.
  *
  * Zero dependencies. Works in any JS runtime.
  *
  * @module @arraypress/text
+ */
+
+/**
+ * How `truncate` cuts: at the end (default) or in the middle, and with what.
+ *
+ * @typedef {object} TruncateOptions
+ * @property {'end' | 'middle'} [position] Where the ellipsis goes. Default `'end'`.
+ * @property {string} [ellipsis] What marks the cut. Default `'...'` at the end, `'…'` in the middle.
+ */
+
+/**
+ * @typedef {object} GetInitialsOptions
+ * @property {number} [max] Maximum number of characters to return. Default 2.
+ */
+
+/**
+ * @typedef {object} MatchesAllOptions
+ * @property {number} [fuzzyFrom] Shortest word allowed a typo. Default 4.
  */
 
 /**
@@ -16,9 +35,9 @@
  * - End truncation (default): "A very long str..."
  * - Middle truncation: "pi_3abc1…789" (useful for IDs)
  *
- * @param {string} str - The string to truncate.
+ * @param {string | null | undefined} str - The string to truncate.
  * @param {number} maxLength - Maximum length including ellipsis.
- * @param {{ position?: 'end'|'middle', ellipsis?: string }} [options]
+ * @param {TruncateOptions} [options]
  * @returns {string} Truncated string.
  *
  * @example
@@ -55,7 +74,7 @@ export function truncate(str, maxLength, options = {}) {
  * Wraps the value in double quotes if it contains commas, quotes,
  * or newlines. Escapes internal double quotes by doubling them.
  *
- * @param {string} str - The string to escape.
+ * @param {string | null | undefined} str - The string to escape.
  * @returns {string} CSV-safe string.
  *
  * @example
@@ -105,7 +124,7 @@ const HTML_ESCAPES = Object.freeze({
  */
 export function escapeHtml(input) {
   if (input === null || input === undefined) return '';
-  return String(input).replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
+  return String(input).replace(/[&<>"']/g, (c) => HTML_ESCAPES[/** @type {keyof typeof HTML_ESCAPES} */ (c)]);
 }
 
 /**
@@ -123,7 +142,7 @@ export function escapeHtml(input) {
  * helper in `@arraypress/color-utils` to render the actual SVG.
  *
  * @param {string|undefined|null} name - The full name (or any noun phrase).
- * @param {{ max?: number }} [opts] - Configuration. `max` defaults to `2`.
+ * @param {GetInitialsOptions} [opts] - Configuration. `max` defaults to `2`.
  * @returns {string} Initials, uppercase. Empty string for empty input.
  *
  * @example
@@ -188,7 +207,7 @@ export function pluralize(n, singular, plural) {
  * the same normaliser on both sides of the compare keeps the match
  * engine consistent across admin UI, API, and import paths.
  *
- * @param {string} s - Input string.
+ * @param {string | null | undefined} s - Input string.
  * @returns {string} Normalised form.
  *
  * @example
@@ -219,7 +238,7 @@ const COMBINING_MARKS = /\p{Mn}+/gu;
  * two must agree, or a search finds different things in the browser and on
  * the server.
  *
- * @param {string} text - Name or query.
+ * @param {string | null | undefined} text - Name or query.
  * @returns {string} Folded text.
  *
  * @example
@@ -234,7 +253,7 @@ export function fold(text) {
  * The words in a name or a query, folded. Anything that is not a letter or
  * a digit, in any script, separates words.
  *
- * @param {string} text - Name or query.
+ * @param {string | null | undefined} text - Name or query.
  * @returns {string[]} Words, in order, none empty.
  *
  * @example
@@ -264,6 +283,7 @@ export function words(text) {
 export function editDistance(a, b) {
   const s = Array.from(a ?? '');
   const t = Array.from(b ?? '');
+  /** @type {number[]} */
   let before = [];
   let previous = Array.from({ length: t.length + 1 }, (_, i) => i);
 
@@ -297,7 +317,7 @@ export function editDistance(a, b) {
  *
  * @param {string} name - What is searched, e.g. a filename.
  * @param {string} query - What was typed. An empty query matches everything.
- * @param {{ fuzzyFrom?: number }} [options] - Shortest word allowed a typo.
+ * @param {MatchesAllOptions} [options] - Shortest word allowed a typo.
  *   Default 4: below that one wrong letter is a different word ("wav", "way").
  * @returns {boolean}
  *
@@ -323,4 +343,20 @@ export function matchesAll(name, query, options = {}) {
         || editDistance(term, Array.from(word).slice(0, length).join('')) <= 1,
     );
   });
+}
+
+/**
+ * The first line of a text that has anything on it, trimmed: what a list
+ * row shows for a long note or template ("Hi {name}," for a reply that
+ * starts with a blank line).
+ *
+ * @param {string | null | undefined} text - Any text; `null` and `undefined` read as empty.
+ * @returns {string} The first non-blank line, trimmed, or `''` when there is none.
+ *
+ * @example
+ * firstLine('\n  Hi Sam,\nThanks for…')  // 'Hi Sam,'
+ * firstLine('   ')                        // ''
+ */
+export function firstLine(text) {
+  return String(text ?? '').split('\n').find((line) => line.trim())?.trim() ?? '';
 }

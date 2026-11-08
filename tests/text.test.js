@@ -10,6 +10,7 @@ import {
   fold,
   words,
   editDistance,
+  firstLine,
   matchesAll,
 } from '../src/index.js';
 
@@ -29,7 +30,7 @@ describe('truncate — end (default)', () => {
 });
 
 describe('truncate — middle', () => {
-  const opts = { position: 'middle' };
+  const opts = { position: /** @type {const} */ ('middle') };
   it('short string unchanged', () => assert.equal(truncate('hello', 10, opts), 'hello'));
   it('truncates middle', () => {
     const result = truncate('pi_3PBxyz123abc456def', 16, opts);
@@ -129,7 +130,7 @@ describe('editDistance', () => {
     ['two swaps', 'abdc', 'bacd', 2],
   ];
 
-  for (const [label, a, b, expected] of cases) {
+  for (const [label, a, b, expected] of /** @type {[string, string, string, number][]} */ (cases)) {
     it(label, () => {
       assert.equal(editDistance(a, b), expected);
       assert.equal(editDistance(b, a), expected);
@@ -148,6 +149,7 @@ describe('matchesAll', () => {
     'Neon Rain - Master.wav',
     'Résumé.pdf',
   ];
+  /** @param {string} query */
   const find = (query) => library.filter((name) => matchesAll(name, query));
 
   it('the other spelling', () => assert.deepEqual(find('License'), ['Licence Agreement.pdf']));
@@ -168,4 +170,34 @@ describe('matchesAll', () => {
   it('swapped while typing', () => assert.deepEqual(find('licnece'), ['Licence Agreement.pdf']));
   it('an empty query matches everything', () => assert.equal(find('').length, library.length));
   it('fuzzyFrom is adjustable', () => assert.equal(matchesAll('Neon Rain.wav', 'rian', { fuzzyFrom: 5 }), false));
+});
+
+describe('firstLine', () => {
+  it('the first line with anything on it, trimmed', () => {
+    assert.equal(firstLine('\n  Hi Sam,\nThanks for…'), 'Hi Sam,');
+    assert.equal(firstLine('One line'), 'One line');
+  });
+  it('empty for blank text, null or undefined', () => {
+    assert.equal(firstLine('   \n\t\n'), '');
+    assert.equal(firstLine(null), '');
+    assert.equal(firstLine(undefined), '');
+  });
+});
+
+describe('escapeHtml', () => {
+  it('escapes the five characters HTML cares about', () => {
+    assert.equal(escapeHtml(`<b class="x">O'Brien & Co</b>`), '&lt;b class=&quot;x&quot;&gt;O&#39;Brien &amp; Co&lt;/b&gt;');
+  });
+  it('null and undefined are empty; anything else is a string first', () => {
+    assert.equal(escapeHtml(null), '');
+    assert.equal(escapeHtml(undefined), '');
+    assert.equal(escapeHtml(42), '42');
+  });
+});
+
+describe('normalize', () => {
+  it('lower case, trimmed, punctuation gone, spaces collapsed', () => {
+    assert.equal(normalize('  Hello,   World! '), 'hello world');
+  });
+  it('empty for anything but a string', () => assert.equal(normalize(/** @type {any} */ (null)), ''));
 });

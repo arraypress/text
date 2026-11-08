@@ -1,7 +1,7 @@
 {
   "name": "@arraypress/text",
-  "version": "2.2.0",
-  "description": "Text utilities — truncation, CSV escaping, HTML escaping, fuzzy-match normalisation and typo-tolerant search. (slugify moved to @arraypress/slug)",
+  "version": "2.3.0",
+  "description": "Text utilities — truncation, CSV escaping, HTML escaping, fuzzy-match normalisation and typo-tolerant search. first lines (slugify moved to @arraypress/slug)",
   "type": "module",
   "main": "src/index.js",
   "types": "src/index.d.ts",
@@ -15,7 +15,11 @@
     "src"
   ],
   "scripts": {
-    "test": "node --test tests/text.test.js"
+    "test": "npm run lint && npm run typecheck && node --test tests/*.test.js && npm run duplication",
+    "lint": "eslint .",
+    "typecheck": "tsc -p . && tsc -p tsconfig.types.json && diff -r -x '*.js' .types src && rm -rf .types",
+    "types": "tsc -p tsconfig.types.json && cp -R .types/. src/ && rm -rf .types",
+    "duplication": "jscpd"
   },
   "keywords": [
     "text",
@@ -32,5 +36,17 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/arraypress/text.git"
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
+    "jscpd": "^5.4.3",
+    "typescript": "^7.0.2"
   }
 }

@@ -79,6 +79,14 @@ English `"{n} thing" / "{n} things"` pluraliser. Returns the full phrase (count 
 
 Aggressive comparison normaliser — lowercase → trim → strip non-word/non-space → collapse whitespace. For equality and dedup checks, **not** for URLs (use `@arraypress/slug` for those).
 
+### `firstLine(text)`
+
+The first line of a text that has anything on it, trimmed; `''` when there is none. What a list row shows for a long note or template.
+
+```js
+firstLine('\n  Hi Sam,\nThanks for…')  // 'Hi Sam,'
+```
+
 ## Search
 
 Somebody searching a list of files remembers roughly what a thing is called, not how it was spelled the day it was saved: "license" for "Licence Agreement.pdf", "drive master" for "Midnight Drive - Master.wav". These four functions are that search, with the same rules as the PHP `SugarCommerce\Format\Search`, so a list filtered in the browser and one filtered on the server find the same things.
@@ -108,13 +116,9 @@ Edit distance by code point (an accented letter is one character, not two bytes)
 
 `fold` lower-cases and strips accents (NFD, combining marks dropped); `words` splits the folded text on anything that is not a letter or digit, in any script.
 
-## Testing
+## Development
 
-```bash
-npm test
-```
-
-73 tests, including the search cases the PHP twin runs.
+`npm test` runs ESLint, a strict TypeScript check of the JSDoc (the `.d.ts` is generated from it with `npm run types`, and the check fails while it's stale), the tests, and jscpd.
 
 ## License
 
