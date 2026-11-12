@@ -5,7 +5,17 @@ All notable changes to `@arraypress/text` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.3.0] — Unreleased
+## [2.3.1] — Unreleased
+
+### Fixed
+
+- `fold`, `words`, `matchesAll`: the marks that spell words stay. Hindi's, Bengali's, Tamil's and Thai's vowel signs were dropped or taken for word breaks ("हिंदी भाषा" was the words "ह", "द", "भ", "ष", so a search matched any text with those letters), and a kana lost its voicing ("がっこう" matched "かっこう"). Only accents go: Latin, Greek and Cyrillic diacritics, Hebrew points, Arabic vowel signs. The PHP twin (`SugarCommerce\Format\Search`) still drops every mark and needs the same change.
+- `truncate`: a middle cut with room for one character returned more than the whole string (`truncate('abcdefghij', 2, { position: 'middle' })` was "a…abcdefghij"); no cut ends or starts inside an emoji; a negative length gives "".
+- `getInitials`: an initial is a whole character ("😀 Smile" gave half an emoji).
+- `normalize` keeps letters of every script, as its documentation said ("Café & Résumé" was "caf rsum"; Japanese was nothing).
+- `escapeCSV` writes a number or a boolean as it prints (`escapeCSV(0)` was "").
+
+## [2.3.0] — 2026-11-11
 
 ### Added
 

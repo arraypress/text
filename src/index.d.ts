@@ -32,21 +32,6 @@ export type MatchesAllOptions = {
     fuzzyFrom?: number;
 };
 /**
- * How `truncate` cuts: at the end (default) or in the middle, and with what.
- *
- * @typedef {object} TruncateOptions
- * @property {'end' | 'middle'} [position] Where the ellipsis goes. Default `'end'`.
- * @property {string} [ellipsis] What marks the cut. Default `'...'` at the end, `'…'` in the middle.
- */
-/**
- * @typedef {object} GetInitialsOptions
- * @property {number} [max] Maximum number of characters to return. Default 2.
- */
-/**
- * @typedef {object} MatchesAllOptions
- * @property {number} [fuzzyFrom] Shortest word allowed a typo. Default 4.
- */
-/**
  * Truncate a string with an ellipsis.
  *
  * Supports two modes:
@@ -72,7 +57,8 @@ export declare function truncate(str: string | null | undefined, maxLength: numb
  * Wraps the value in double quotes if it contains commas, quotes,
  * or newlines. Escapes internal double quotes by doubling them.
  *
- * @param {string | null | undefined} str - The string to escape.
+ * @param {string | number | boolean | null | undefined} str - The value to escape; a number or a
+ *   boolean is written as it prints.
  * @returns {string} CSV-safe string.
  *
  * @example
@@ -80,8 +66,9 @@ export declare function truncate(str: string | null | undefined, maxLength: numb
  * escapeCSV('Has, comma')                  // '"Has, comma"'
  * escapeCSV('Has "quotes"')               // '"Has ""quotes"""'
  * escapeCSV('Line 1\nLine 2')             // '"Line 1\nLine 2"'
+ * escapeCSV(0)                             // '0'
  */
-export declare function escapeCSV(str: string | null | undefined): string;
+export declare function escapeCSV(str: string | number | boolean | null | undefined): string;
 /**
  * Escape a string for safe embedding in HTML.
  *
@@ -177,28 +164,30 @@ export declare function pluralize(n: number, singular: string, plural: string): 
  * @example
  * normalize('  Pro Bundle™  (2024) ')  // 'pro bundle 2024'
  * normalize('Pro—Bundle')              // 'probundle'  (em-dash stripped, no space inserted)
- * normalize('Café & Résumé')           // 'café  résumé'  (accents preserved)
+ * normalize('Café & Résumé')           // 'café résumé'  (letters of every script kept)
  */
 export declare function normalize(s: string | null | undefined): string;
 /**
  * Fold text for searching: lower case, and accents off — so "résumé" is
  * found by "resume".
  *
- * Decomposes to NFD and drops the combining marks, which is what the PHP
- * twin (`SugarCommerce\Format\Search`) does with the intl extension. The
- * two must agree, or a search finds different things in the browser and on
- * the server.
+ * Decomposes to NFD and drops the accents (the PHP twin,
+ * `SugarCommerce\Format\Search`, drops every combining mark with the intl
+ * extension, and agrees for Latin, Greek and Cyrillic). The marks that
+ * spell a word stay, recomposed: a Hindi or Thai vowel sign, a kana's
+ * voicing mark. Dropping those made "हिंदी" the letters "हद" and "が" a "か".
  *
  * @param {string | null | undefined} text - Name or query.
  * @returns {string} Folded text.
  *
  * @example
  * fold('Résumé.PDF')   // 'resume.pdf'
+ * fold('がっこう')       // 'がっこう'
  */
 export declare function fold(text: string | null | undefined): string;
 /**
- * The words in a name or a query, folded. Anything that is not a letter or
- * a digit, in any script, separates words.
+ * The words in a name or a query, folded. Anything that is not a letter, a
+ * digit or a mark that spells a word, in any script, separates words.
  *
  * @param {string | null | undefined} text - Name or query.
  * @returns {string[]} Words, in order, none empty.

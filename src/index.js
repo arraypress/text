@@ -29,6 +29,31 @@
  */
 
 /**
+ * The first UTF-16 units of a string, never ending halfway through a
+ * character (an emoji is two units).
+ *
+ * @param {string} str - Any string.
+ * @param {number} length - Most units to take.
+ * @returns {string} The start of the string.
+ */
+function head(str, length) {
+  const cut = str.slice(0, Math.max(0, length));
+  return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut;
+}
+
+/**
+ * The last UTF-16 units of a string, never starting halfway through a character.
+ *
+ * @param {string} str - Any string.
+ * @param {number} length - Most units to take.
+ * @returns {string} The end of the string.
+ */
+function tail(str, length) {
+  const cut = length > 0 ? str.slice(-length) : '';
+  return /^[\uDC00-\uDFFF]/.test(cut) ? cut.slice(1) : cut;
+}
+
+/**
  * Truncate a string with an ellipsis.
  *
  * Supports two modes:
@@ -59,13 +84,13 @@ export function truncate(str, maxLength, options = {}) {
     if (available <= 0) return ellipsis.slice(0, maxLength);
     const frontLen = Math.ceil(available / 2);
     const backLen = Math.floor(available / 2);
-    return str.slice(0, frontLen) + ellipsis + str.slice(-backLen);
+    return head(str, frontLen) + ellipsis + tail(str, backLen);
   }
 
   // End truncation
   const available = maxLength - ellipsis.length;
-  if (available <= 0) return ellipsis.slice(0, maxLength);
-  return str.slice(0, available) + ellipsis;
+  if (available <= 0) return ellipsis.slice(0, Math.max(0, maxLength));
+  return head(str, available) + ellipsis;
 }
 
 /**
@@ -74,7 +99,8 @@ export function truncate(str, maxLength, options = {}) {
  * Wraps the value in double quotes if it contains commas, quotes,
  * or newlines. Escapes internal double quotes by doubling them.
  *
- * @param {string | null | undefined} str - The string to escape.
+ * @param {string | number | boolean | null | undefined} str - The value to escape; a number or a
+ *   boolean is written as it prints.
  * @returns {string} CSV-safe string.
  *
  * @example
@@ -82,8 +108,10 @@ export function truncate(str, maxLength, options = {}) {
  * escapeCSV('Has, comma')                  // '"Has, comma"'
  * escapeCSV('Has "quotes"')               // '"Has ""quotes"""'
  * escapeCSV('Line 1\nLine 2')             // '"Line 1\nLine 2"'
+ * escapeCSV(0)                             // '0'
  */
 export function escapeCSV(str) {
+  if (typeof str === 'number' || typeof str === 'boolean') return String(str);
   if (!str || typeof str !== 'string') return '';
   if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
     return `"${str.replace(/"/g, '""')}"`;
@@ -158,10 +186,11 @@ export function getInitials(name, opts = {}) {
   const max = opts.max ?? 2;
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '';
-  if (parts.length === 1) return parts[0].slice(0, max).toUpperCase();
+  // By character, not UTF-16 unit: an emoji or a letter outside the Basic Multilingual Plane is one initial.
+  if (parts.length === 1) return Array.from(parts[0]).slice(0, max).join('').toUpperCase();
   return parts
     .slice(0, max)
-    .map((w) => w[0] ?? '')
+    .map((w) => Array.from(w)[0] ?? '')
     .join('')
     .toUpperCase();
 }
@@ -213,45 +242,72 @@ export function pluralize(n, singular, plural) {
  * @example
  * normalize('  Pro Bundle™  (2024) ')  // 'pro bundle 2024'
  * normalize('Pro—Bundle')              // 'probundle'  (em-dash stripped, no space inserted)
- * normalize('Café & Résumé')           // 'café  résumé'  (accents preserved)
+ * normalize('Café & Résumé')           // 'café résumé'  (letters of every script kept)
  */
 export function normalize(s) {
   if (!s || typeof s !== 'string') return '';
   return s
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s]/g, '')
+    .replace(/[^\p{L}\p{M}\p{N}_\s]/gu, '')
     .replace(/\s+/g, ' ');
 }
 
 /* ── fuzzy search ─────────────────────────────────────────────────── */
 
-const NOT_A_WORD = /[^\p{L}\p{N}]+/u;
-const COMBINING_MARKS = /\p{Mn}+/gu;
+/** What separates words: anything but letters, digits and the marks that spell them (Hindi's and Thai's vowels). */
+const NOT_A_WORD = /[^\p{L}\p{N}\p{M}]+/u;
+const COMBINING_MARK = /\p{Mn}/gu;
+
+/**
+ * The combining marks searching can do without, as code point ranges: the
+ * accents of Latin, Greek and Cyrillic, Hebrew's points and Arabic's vowel
+ * signs. Every other mark is a letter in all but name (a Hindi or Thai
+ * vowel, a kana's voicing: が is not か) and stays.
+ *
+ * @type {ReadonlyArray<readonly [number, number]>}
+ */
+const ACCENTS = Object.freeze([
+  [0x0300, 0x036f], [0x0591, 0x05c7], [0x0610, 0x061a], [0x064b, 0x065f], [0x0670, 0x0670], [0x1ab0, 0x1aff],
+  [0x1dc0, 0x1dff], [0x20d0, 0x20ff], [0xfe20, 0xfe2f],
+]);
+
+/**
+ * Whether a combining mark is an accent ({@link ACCENTS}).
+ *
+ * @param {string} mark - One combining mark.
+ * @returns {boolean} True for an accent.
+ */
+function isAccent(mark) {
+  const point = mark.codePointAt(0) ?? 0;
+  return ACCENTS.some(([from, to]) => point >= from && point <= to);
+}
 
 /**
  * Fold text for searching: lower case, and accents off — so "résumé" is
  * found by "resume".
  *
- * Decomposes to NFD and drops the combining marks, which is what the PHP
- * twin (`SugarCommerce\Format\Search`) does with the intl extension. The
- * two must agree, or a search finds different things in the browser and on
- * the server.
+ * Decomposes to NFD and drops the accents (the PHP twin,
+ * `SugarCommerce\Format\Search`, drops every combining mark with the intl
+ * extension, and agrees for Latin, Greek and Cyrillic). The marks that
+ * spell a word stay, recomposed: a Hindi or Thai vowel sign, a kana's
+ * voicing mark. Dropping those made "हिंदी" the letters "हद" and "が" a "か".
  *
  * @param {string | null | undefined} text - Name or query.
  * @returns {string} Folded text.
  *
  * @example
  * fold('Résumé.PDF')   // 'resume.pdf'
+ * fold('がっこう')       // 'がっこう'
  */
 export function fold(text) {
   if (!text || typeof text !== 'string') return '';
-  return text.toLowerCase().normalize('NFD').replace(COMBINING_MARKS, '');
+  return text.toLowerCase().normalize('NFD').replace(COMBINING_MARK, (mark) => (isAccent(mark) ? '' : mark)).normalize('NFC');
 }
 
 /**
- * The words in a name or a query, folded. Anything that is not a letter or
- * a digit, in any script, separates words.
+ * The words in a name or a query, folded. Anything that is not a letter, a
+ * digit or a mark that spells a word, in any script, separates words.
  *
  * @param {string | null | undefined} text - Name or query.
  * @returns {string[]} Words, in order, none empty.

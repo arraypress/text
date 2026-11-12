@@ -29,6 +29,26 @@ describe('truncate — end (default)', () => {
   it('maxLength 4', () => assert.equal(truncate('hello world', 4), 'h...'));
 });
 
+describe('truncate — whole characters, never longer than asked', () => {
+  it('an emoji is not cut in two', () => {
+    assert.equal(truncate('😀😀😀😀😀', 4), '...');
+    assert.equal(truncate('😀😀😀😀😀', 5), '😀...');
+    assert.equal(truncate('😀😀😀😀😀', 6, { position: 'middle' }), '😀…😀');
+    for (const max of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
+      for (const position of /** @type {const} */ (['end', 'middle'])) {
+        const cut = truncate('a😀b😀c😀d😀', max, { position });
+        assert.ok(cut.isWellFormed() && cut.length <= max, `${position} ${max}: ${cut}`);
+      }
+    }
+  });
+  it('the middle with room for one character keeps one', () => {
+    assert.equal(truncate('abcdefghij', 2, { position: 'middle' }), 'a…');
+    assert.equal(truncate('abcdefghij', 2, { position: 'middle', ellipsis: '.' }), 'a.');
+    assert.equal(truncate('abcdefghij', 3, { position: 'middle' }), 'a…j');
+  });
+  it('a negative length is nothing', () => assert.equal(truncate('abc', -1), ''));
+});
+
 describe('truncate — middle', () => {
   const opts = { position: /** @type {const} */ ('middle') };
   it('short string unchanged', () => assert.equal(truncate('hello', 10, opts), 'hello'));
@@ -68,6 +88,11 @@ describe('getInitials', () => {
   it('collapses multi-space runs', () =>
     assert.equal(getInitials('A\tB\nC', { max: 3 }), 'ABC'));
   it('null → empty', () => assert.equal(getInitials(null), ''));
+  it('an initial is a whole character', () => {
+    assert.equal(getInitials('😀 Smile'), '😀S');
+    assert.equal(getInitials('𝒜lice'), '𝒜L');
+    assert.equal(getInitials('李 小龍'), '李小');
+  });
   it('undefined → empty', () => assert.equal(getInitials(undefined), ''));
   it('empty → empty', () => assert.equal(getInitials(''), ''));
   it('all whitespace → empty', () => assert.equal(getInitials('   '), ''));
@@ -93,6 +118,11 @@ describe('pluralize', () => {
 
 describe('escapeCSV', () => {
   it('simple value unchanged', () => assert.equal(escapeCSV('hello'), 'hello'));
+  it('a number or a boolean is written as it prints', () => {
+    assert.equal(escapeCSV(/** @type {any} */ (0)), '0');
+    assert.equal(escapeCSV(/** @type {any} */ (12.5)), '12.5');
+    assert.equal(escapeCSV(/** @type {any} */ (false)), 'false');
+  });
   it('wraps comma', () => assert.equal(escapeCSV('has, comma'), '"has, comma"'));
   it('escapes quotes', () => assert.equal(escapeCSV('has "quotes"'), '"has ""quotes"""'));
   it('wraps newline', () => assert.equal(escapeCSV('line1\nline2'), '"line1\nline2"'));
@@ -114,6 +144,29 @@ describe('fold / words', () => {
     assert.deepEqual(words('Midnight Drive - Master.wav'), ['midnight', 'drive', 'master', 'wav']));
   it('keeps other scripts', () => assert.deepEqual(words('Ünïcode—テスト 2'), ['unicode', 'テスト', '2']));
   it('nothing to split → no words', () => assert.deepEqual(words(' - '), []));
+  it('keeps the marks that spell words: Hindi, Bengali, Thai, Tamil, Japanese', () => {
+    assert.deepEqual(words('हिंदी भाषा'), ['हिंदी', 'भाषा']);
+    assert.deepEqual(words('বাংলা ভাষা'), ['বাংলা', 'ভাষা']);
+    assert.deepEqual(words('தமிழ் மொழி'), ['தமிழ்', 'மொழி']);
+    assert.equal(fold('ไทย ที่นี่'), 'ไทย ที่นี่');
+    assert.equal(fold('がっこう'), 'がっこう');
+    assert.equal(fold('한국어'), '한국어');
+  });
+  it('drops the accents and points searching can do without, decomposed or not', () => {
+    assert.equal(fold('Ünïcode'), 'unicode');
+    assert.equal(fold('re\u0301sume\u0301'), 'resume');
+    assert.equal(fold('Ελλάδα'), 'ελλαδα');
+    assert.equal(fold('Ёлка'), 'елка');
+    assert.equal(fold('שָׁלוֹם'), 'שלום');
+    assert.equal(fold('مُحَمَّد'), 'محمد');
+    assert.equal(fold('\u0301'), '');
+  });
+  it('a search in Hindi or Japanese finds its own word only', () => {
+    assert.equal(matchesAll('हिंदी भाषा', 'हिंदी'), true);
+    assert.equal(matchesAll('हद', 'हिंदी'), false);
+    assert.equal(matchesAll('かっこう', 'がっこう', { fuzzyFrom: Infinity }), false);
+    assert.equal(matchesAll('がっこう', 'がっこう'), true);
+  });
 });
 
 describe('editDistance', () => {
@@ -200,4 +253,10 @@ describe('normalize', () => {
     assert.equal(normalize('  Hello,   World! '), 'hello world');
   });
   it('empty for anything but a string', () => assert.equal(normalize(/** @type {any} */ (null)), ''));
+  it('keeps the letters of every script', () => {
+    assert.equal(normalize('Café & Résumé'), 'café résumé');
+    assert.equal(normalize('Müller GmbH™'), 'müller gmbh');
+    assert.equal(normalize('日本語 (テスト)'), '日本語 テスト');
+    assert.equal(normalize('हिंदी!'), 'हिंदी');
+  });
 });

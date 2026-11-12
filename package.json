@@ -1,6 +1,6 @@
 {
   "name": "@arraypress/text",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "Text utilities — truncation, CSV escaping, HTML escaping, fuzzy-match normalisation and typo-tolerant search. first lines (slugify moved to @arraypress/slug)",
   "type": "module",
   "main": "src/index.js",
